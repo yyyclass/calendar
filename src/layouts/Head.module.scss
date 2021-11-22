@@ -1,0 +1,27 @@
+.layout-head {
+    display: grid;
+    height: 60px;
+    align-items: center;
+    grid-template-columns: auto 1fr;
+}
+
+.logo {
+    /*width: 40px;*/
+    height: 40px;
+
+}
+
+.logo > div {
+    display: inline-block;
+}
+
+.nav {
+    justify-self: right;
+    align-items: center;
+    display: grid;
+    grid-template-columns: auto auto;
+}
+
+.nav > div{
+    display: inline-block;
+}
