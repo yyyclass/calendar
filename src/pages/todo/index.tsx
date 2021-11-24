@@ -2,7 +2,7 @@ import FrontDeskLayout from "../../layouts/FrontDeskLayout";
 import AddIcon from "@mui/icons-material/Add";
 import Popover from "@mui/material/Popover";
 import TextField from "@mui/material/TextField";
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import styles from "./index.module.scss";
 import {v4 as uuidv4} from "uuid";
 import Button from "@mui/material/Button";
@@ -36,43 +36,45 @@ interface TaskList {
     tab: string;
 }
 
-interface TodoProps{
+interface TodoProps {
     taskList: TaskList[] | []
 }
 
-const Todo = (props:TodoProps) => {
+const Todo = (props: TodoProps) => {
     const [addTaskDialogEl, setAddTaskDialogEl] = useState(null); // 点击添加任务清单，弹出的对话框的挂载 DOM 元素
     const [taskValue, setTaskValue] = useState<string>(""); // 添加任务清单的 input 属性
     const [taskTabColor, setTaskTabColor] = useState<string>('gray'); // 任务清单的标签颜色
     const [taskList, setTaskList] = useState<TaskList[] | []>([]); // 任务清单列表
-    const [moreDialogEl, setMoreDialogEl] = useState(null); // 点击任务清单更多按钮，弹出的对话框的挂载 DOM 元素
+    const [moreDialogEl, setMoreDialogEl] = useState<any>(null); // 点击任务清单更多按钮，弹出的对话框的挂载 DOM 元素
     const [deleteConfirmEl, setDeleteConfirmEl] = useState(null); // 点击删除按钮，弹出的对话框挂载的 DOM 元素
     const [currentMoreTask, setCurrentMoreTask] = useState<TaskList | null>(null); // 当前更多操作的任务清单数据（编辑、删除）
     const [isEditTask, setIsEditTask] = useState(false); // 当前是否编辑任务清单
     const [currentActiveTask, setCurrentActiveTask] = useState<TaskList | null>(null); // 当前访问的任务清单
     const [currentActiveTaskContent, setCurrentActiveTaskContent] = useState(""); // 当前访问的任务清单数据
+    const [location, setLocation] = useState({top: 0, left: 0}); // 弹出对话框的绝对位置
 
 
     useEffect(() => {
         (async () => {
             const result = await fetch('/api/todo').then(res => res.json());
-            if (result.data) {
-                setTaskList(result.data)
-            }
-
+            result.data && setTaskList(result.data)
         })()
     }, [])
 
     /**
-     * 点击添加任务清单，触发的函数
+     * 添加任务清单
      * @param e
      */
     const handleAddTask = (e) => {
-        setAddTaskDialogEl(e.currentTarget)
+        setLocation({
+            left: e.clientX,
+            top: e.clientY
+        })
+        setAddTaskDialogEl(e.target)
     }
 
     /**
-     * 添加任务清单过程中，清单任务名称输入改变触发的函数
+     * 清单任务名称输入改变触发的函数
      * @param e
      */
     const handleChangeNewTaskValue = (e) => {
@@ -80,7 +82,7 @@ const Todo = (props:TodoProps) => {
     }
 
     /**
-     * 添加任务清单过程中，清单任务标签颜色选择点击触发的函数
+     * 清单任务标签颜色点击选择
      * @param e
      */
     const handleChooseTaskTitleColor = (e: string) => {
@@ -88,7 +90,7 @@ const Todo = (props:TodoProps) => {
     }
 
     /**
-     * 添加任务清单过程中，关闭添加任务清单对话框，触发的函数，初始化到默认状态
+     * 添加任务清单结束
      */
     const handleCloseNewTaskDialog = () => {
         setAddTaskDialogEl(null);
@@ -98,7 +100,7 @@ const Todo = (props:TodoProps) => {
     }
 
     /**
-     * 任务清单更多操作过程中，关闭对话框触发的函数，初始化状态
+     * 关闭更多操作对话框
      */
     const handleCloseMoreDialog = () => {
         setMoreDialogEl(null);
@@ -138,14 +140,19 @@ const Todo = (props:TodoProps) => {
     }
 
     /**
-     * 打开修改任务清单对话框以及填充旧数据
+     * 编辑已有的任务清单
      * @param e
      */
     const handleTaskOpenEditDialog = (e) => {
+        setLocation({
+            left: e.clientX,
+            top: e.clientY
+        })
         setAddTaskDialogEl(e.target);
         setTaskValue(currentMoreTask?.text || "");
         setIsEditTask(true);
         setTaskTabColor(currentMoreTask?.tab || "gray");
+        handleCloseMoreDialog();
     }
 
     /**
@@ -169,7 +176,7 @@ const Todo = (props:TodoProps) => {
     }
 
     /**
-     * 单个任务清单的更多操作所触发的函数
+     * 打开更多操作对话框
      * @param e
      * @param task
      */
@@ -302,6 +309,8 @@ const Todo = (props:TodoProps) => {
                 <Popover
                     open={!!addTaskDialogEl}
                     anchorEl={addTaskDialogEl}
+                    anchorReference="anchorPosition"
+                    anchorPosition={location}
                     transitionDuration={{exit: 0.2}}
                     onClose={handleCloseNewTaskDialog}
                     anchorOrigin={{
@@ -368,16 +377,18 @@ const Todo = (props:TodoProps) => {
                 >
                     <div className={`pl-3 pr-3 pt-2 pb-2 dark:bg-black`}>
                         <Tooltip title="编辑" placement="top">
-                            <EditIcon
-                                className={`cursor-pointer dark:text-gray-50`}
-                                onClick={handleTaskOpenEditDialog}
-                            />
+                            <span className={`relative`} onClick={handleTaskOpenEditDialog}>
+                                <EditIcon
+                                    className={`cursor-pointer dark:text-gray-50 relative`}
+                                />
+                            </span>
                         </Tooltip>
                         <Tooltip title="删除" placement="top">
-                            <DeleteIcon
-                                className={`cursor-pointer dark:text-gray-50`}
-                                onClick={handleClickDeleteIcon}
-                            />
+                            <span className={`relative`} onClick={handleClickDeleteIcon}>
+                                <DeleteIcon
+                                    className={`cursor-pointer dark:text-gray-50`}
+                                />
+                            </span>
                         </Tooltip>
                     </div>
                 </Popover>
