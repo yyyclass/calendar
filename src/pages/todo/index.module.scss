@@ -7,14 +7,14 @@
 
 
     &:hover .more{
-      opacity: 1;
+      visibility: inherit;
     }
     .more{
-      opacity: 0;
+      visibility: hidden;
     }
 
     .more-un{
-      opacity: 1;
+      visibility: inherit;
     }
   }
 }

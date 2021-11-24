@@ -2,8 +2,7 @@ import FrontDeskLayout from "../../layouts/FrontDeskLayout";
 import AddIcon from "@mui/icons-material/Add";
 import Popover from "@mui/material/Popover";
 import TextField from "@mui/material/TextField";
-import Input from "@mui/material/Input";
-import {useCallback, useMemo, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import styles from "./index.module.scss";
 import {v4 as uuidv4} from "uuid";
 import Button from "@mui/material/Button";
@@ -16,12 +15,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import Radio from "../../tailwind.components/Radio";
 import RadioGroup from "../../tailwind.components/RadioGroup";
-import ListItemAvatar from '@mui/material/ListItemAvatar';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
-import Avatar from '@mui/material/Avatar';
+import Skeleton from '@mui/material/Skeleton';
+import Snackbar from '@mui/material/Snackbar';
+import ThemeSwitch from "../../tailwind.components/Switch";
 
-const test: TaskList[] = []
 
 interface TaskList {
     /**
@@ -39,16 +36,32 @@ interface TaskList {
     tab: string;
 }
 
-const Todo = () => {
+interface TodoProps{
+    taskList: TaskList[] | []
+}
+
+const Todo = (props:TodoProps) => {
     const [addTaskDialogEl, setAddTaskDialogEl] = useState(null); // 点击添加任务清单，弹出的对话框的挂载 DOM 元素
     const [taskValue, setTaskValue] = useState<string>(""); // 添加任务清单的 input 属性
-    const [taskTabColor, setTaskTabColor] = useState<string>('gray');
-    const [taskList, setTaskList] = useState<TaskList[] | []>(test); // 任务清单列表
+    const [taskTabColor, setTaskTabColor] = useState<string>('gray'); // 任务清单的标签颜色
+    const [taskList, setTaskList] = useState<TaskList[] | []>([]); // 任务清单列表
     const [moreDialogEl, setMoreDialogEl] = useState(null); // 点击任务清单更多按钮，弹出的对话框的挂载 DOM 元素
     const [deleteConfirmEl, setDeleteConfirmEl] = useState(null); // 点击删除按钮，弹出的对话框挂载的 DOM 元素
-    const [currentActiveTask, setCurrentActiveTask] = useState<TaskList | null>(null); // 当前访问的任务清单
     const [currentMoreTask, setCurrentMoreTask] = useState<TaskList | null>(null); // 当前更多操作的任务清单数据（编辑、删除）
     const [isEditTask, setIsEditTask] = useState(false); // 当前是否编辑任务清单
+    const [currentActiveTask, setCurrentActiveTask] = useState<TaskList | null>(null); // 当前访问的任务清单
+    const [currentActiveTaskContent, setCurrentActiveTaskContent] = useState(""); // 当前访问的任务清单数据
+
+
+    useEffect(() => {
+        (async () => {
+            const result = await fetch('/api/todo').then(res => res.json());
+            if (result.data) {
+                setTaskList(result.data)
+            }
+
+        })()
+    }, [])
 
     /**
      * 点击添加任务清单，触发的函数
@@ -81,6 +94,7 @@ const Todo = () => {
         setAddTaskDialogEl(null);
         setTaskValue("");
         setTaskTabColor("gray")
+        setIsEditTask(false)
     }
 
     /**
@@ -106,6 +120,11 @@ const Todo = () => {
         let _taskList = [...taskList]; // 创建一个数组，不能直接等于，否则引用
         _taskList.splice(index, 1); // 根据下标删除数组中的一项
         setTaskList(_taskList); // 设置新的任务清单数组
+        // 当做操作和当前访问的任务清单相同，那么删除的同时，顺便结束访问
+        if (currentMoreTask?.id === currentActiveTask?.id) {
+            setCurrentActiveTask(null);
+            setCurrentActiveTaskContent("")
+        }
         handleCloseMoreDialog(); // 任务清单更多操作过程中，关闭对话框触发的函数，初始化状态
         handleTaskOpenConfirmClose(); // 任务清单的删除对话框关闭触发的函数
     }
@@ -135,11 +154,13 @@ const Todo = () => {
     const handleEditTaskSucceed = () => {
         const index = taskList.findIndex(task => currentMoreTask?.id === task.id); // 获取到当前编辑任务清单的数组下标
         const _taskList = [...taskList]; // 复制一个数组
-        //
         _taskList[index] = {
             ...taskList[index],
             text: taskValue,
             tab: taskTabColor
+        }
+        if (currentActiveTask?.id === currentMoreTask?.id) {
+            setCurrentActiveTask(_taskList[index])
         }
         setTaskList(_taskList);
         setIsEditTask(false);
@@ -155,6 +176,7 @@ const Todo = () => {
     const handleTaskOpenMoreDialog = useCallback((e, task: TaskList) => {
         setCurrentMoreTask({...task});
         setMoreDialogEl(e.target);
+        e.stopPropagation(); // 禁止捕获，防止后续的click事件
     }, [taskList])
 
 
@@ -165,15 +187,37 @@ const Todo = () => {
         setDeleteConfirmEl(null);
     }
 
+    /**
+     * 设置当前访问的任务清单
+     */
     const handleClickTask = useCallback((e, task) => {
-        e.nativeEvent.stopImmediatePropagation();
         setCurrentActiveTask(task);
-    }, [currentActiveTask])
+    }, [currentActiveTask]);
 
-    // 清单任务列表
+    /**
+     * 根据当前访问的任务清单 id 请求数据
+     */
+    useEffect(() => {
+        (async () => {
+            if (currentActiveTask?.id) {
+                const todoContent = await fetch(`/api/todo/${currentActiveTask.id}`).then(res => res.json());
+                if (todoContent.content) {
+                    setCurrentActiveTaskContent(todoContent.content)
+                }
+            }
+        })();
+    }, [currentActiveTask?.id])
+
+    // 清单任务列表组件
     const TaskListUseMemo = useMemo(() => {
         if (!(taskList.length > 0)) {
-            return null;
+            return (
+                <div>
+                    <Skeleton variant="text"/>
+                    <Skeleton variant="text"/>
+                    <Skeleton variant="text"/>
+                </div>
+            )
         }
 
         return (
@@ -183,17 +227,16 @@ const Todo = () => {
                         taskList.map((task: TaskList) => (
                             <ListItem
                                 key={task.id}
-                                className={`${styles.tasklist} ${currentActiveTask?.id === task.id ? "bg-gray-100" : ""} h-9 hover:bg-gray-100 rounded-2xl text-xs cursor-default mb-0.5 flex-grow w-auto`}
-                                onClick={(e) => {
-                                    // 访问？？？
-                                    // handleClickTask(e, task)
-                                }}
+                                className={`${styles.tasklist} ${currentActiveTask?.id === task.id ? "bg-gray-100 dark:bg-gray-800" : ""} h-9 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-2xl text-xs cursor-default mb-0.5 flex-grow w-auto`}
+                                onClick={(e) => handleClickTask(e, task)}
                                 disableGutters
                                 secondaryAction={(
                                     <Tooltip title="更多" placement="right">
-                                        <div onClick={(e) => {
-                                            handleTaskOpenMoreDialog(e, task);
-                                        }}>
+                                        <div
+                                            className={`mr-1`}
+                                            onClick={(e) => {
+                                                handleTaskOpenMoreDialog(e, task);
+                                            }}>
                                             <ExpandMoreIcon
                                                 key={task.id}
                                                 className={`${styles.more} ${currentMoreTask?.id === task.id ? styles["more-un"] : ""} text-gray-400 cursor-pointer rounded-2xl`}
@@ -208,7 +251,7 @@ const Todo = () => {
                                     </div>
                                 </div>
 
-                                <p className={`inline-block truncate text-sm text-gray-800 mr-2`}>{task.text}</p>
+                                <p className={`inline-block truncate text-sm text-gray-800 dark:text-gray-400`}>{task.text}</p>
                             </ListItem>
                         ))
                     }
@@ -217,6 +260,7 @@ const Todo = () => {
         )
     }, [taskList, moreDialogEl, currentActiveTask]);
 
+    // 任务清单颜色标签列表组件
     const RadioGroupUseMemo = useMemo(() => {
         return (
             <RadioGroup onClick={handleChooseTaskTitleColor}>
@@ -228,36 +272,57 @@ const Todo = () => {
                 <Radio value={"red"} checked={taskTabColor === "red"} color={`bg-red-400`}/>
             </RadioGroup>
         )
-    }, [taskTabColor])
+    }, [taskTabColor]);
 
+    // 任务清单详细内容组件
+    const TaskDetail = useMemo(() => {
+        return (
+            <div className={`p-2.5 w-5/6 mr-auto ml-auto pt-5 dark:text-gray-300`}>
+                <h1 className={`text-xl mt-4 mb-6`}>{currentActiveTask?.text}</h1>
+                <div>
+                    <p>{currentActiveTaskContent}</p>
+                </div>
+            </div>
+        )
+    }, [currentActiveTask, currentActiveTaskContent])
 
     return (
         <section className={`${styles["todo-page"]}`}>
-            <div className={`p-2.5 w-auto`}>
-                <p className={`cursor-default font-medium pb-2 `}>任务清单</p>
+            <div className={`p-2.5 border-r w-auto dark:text-gray-200 dark:border-gray-900`}>
+                <p className={`cursor-default font-medium pb-2`}>任务清单</p>
                 <div
-                    className={`inline-flex p-2 m-1 cursor-pointer text-yyy-yellow`}
+                    className={`inline-flex p-2 m-1 cursor-pointer text-gray-800`}
                     onClick={handleAddTask}
                 >
-                    <AddIcon/>
-                    <span className={``}>添加任务清单</span>
+                    <AddIcon className={`dark:text-gray-200`}/>
+                    <p className={`dark:text-gray-200`}>添加任务清单</p>
                 </div>
 
                 {/** 添加任务清单对话框 **/}
                 <Popover
                     open={!!addTaskDialogEl}
                     anchorEl={addTaskDialogEl}
+                    transitionDuration={{exit: 0.2}}
                     onClose={handleCloseNewTaskDialog}
                     anchorOrigin={{
                         vertical: "bottom",
                         horizontal: "left",
                     }}
                 >
-                    <div className={`p-4`}>
+                    <div className={`p-4 dark:bg-black`}>
                         {/** 清单名称输入框 **/}
-                        <div className={`mb-2`}>
+                        <div className={`mb-2 dark:text-gray-200`}>
                             <TextField
+                                onKeyUp={(e) => {
+                                    if (e.key === "Enter") {
+                                        handleCreateTaskSucceed();
+                                        e.stopPropagation();
+                                    }
+                                }}
                                 autoFocus
+                                inputProps={{
+                                    className: `dark:text-gray-200`
+                                }}
                                 label="清单任务名称"
                                 value={taskValue}
                                 required
@@ -266,14 +331,24 @@ const Todo = () => {
                         </div>
                         {/** 任务清单标签颜色选择 **/}
                         <div>
-                            <p className={`text-sm text-gray-400 ml-1`}>任务清单标签颜色</p>
+                            <p className={`text-sm text-gray-400 ml-1 mb-1`}>任务清单标签颜色</p>
                             {RadioGroupUseMemo}
                         </div>
                         <div className={`text-right mt-2`}>
                             {
                                 isEditTask ?
-                                    <Button disabled={taskValue === ""} variant="contained" size="small" className={`bg-green-400`} onClick={handleEditTaskSucceed}>确认</Button> :
-                                    <Button disabled={taskValue === ""} variant="contained" size="small" className={`bg-yyy-yellow`} onClick={handleCreateTaskSucceed}>确认创建</Button>
+                                    <Button
+                                        disabled={taskValue === ""}
+                                        variant="contained"
+                                        size="small"
+                                        className={`bg-green-400`}
+                                        onClick={handleEditTaskSucceed}>确认</Button> :
+                                    <Button
+                                        disabled={taskValue === ""}
+                                        variant="contained"
+                                        size="small"
+                                        className={`bg-yyy-yellow dark:bg-gray-600 ${taskValue === "" ? "dark:text-gray-400" : ""}`}
+                                        onClick={handleCreateTaskSucceed}>确认创建</Button>
                             }
                         </div>
                     </div>
@@ -291,13 +366,16 @@ const Todo = () => {
                         horizontal: "left",
                     }}
                 >
-                    <div className={`pl-3 pr-3 pt-2 pb-2`}>
+                    <div className={`pl-3 pr-3 pt-2 pb-2 dark:bg-black`}>
                         <Tooltip title="编辑" placement="top">
-                            <EditIcon className={`cursor-pointer`} onClick={handleTaskOpenEditDialog}/>
+                            <EditIcon
+                                className={`cursor-pointer dark:text-gray-50`}
+                                onClick={handleTaskOpenEditDialog}
+                            />
                         </Tooltip>
                         <Tooltip title="删除" placement="top">
                             <DeleteIcon
-                                className={`cursor-pointer`}
+                                className={`cursor-pointer dark:text-gray-50`}
                                 onClick={handleClickDeleteIcon}
                             />
                         </Tooltip>
@@ -343,12 +421,20 @@ const Todo = () => {
                 </Popover>
             </div>
             {/** 清单任务 详细内容 根据点击的任务清单生成数据 **/}
-            <div className={`p-2.5 w-5/6 mr-auto ml-auto pt-5`}>
-                <h1>标签:{currentActiveTask?.text}</h1>
-            </div>
+            {TaskDetail}
+            {/*<div className={`w-auto h-20`}>*/}
+            {/*    <Snackbar*/}
+            {/*        open={true}*/}
+            {/*        autoHideDuration={6000}*/}
+            {/*        // onClose={handleClose}*/}
+            {/*        message="Note archived"*/}
+            {/*        // action={action}*/}
+            {/*    />*/}
+            {/*</div>*/}
         </section>
     )
 }
+
 
 Todo.getLayout = (page) => (
     <>
@@ -357,5 +443,23 @@ Todo.getLayout = (page) => (
         </FrontDeskLayout>
     </>
 )
+
+
+export const getServerSideProps = async (ctx) => {
+    const result = await fetch('http://localhost:3000/api/todo').then(res => res.json());
+    return {
+        props: {
+            taskList: result.data ?? []
+        }
+    }
+}
+
+// export const getStaticProps = async (ctx) => {
+//     return {
+//         props: {
+//             todo: "我是辅助"
+//         }
+//     }
+// }
 
 export default Todo;

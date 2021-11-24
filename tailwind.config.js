@@ -1,18 +1,25 @@
-const colors = require('tailwindcss/colors');
 module.exports = {
-  purge: ['./pages/**/*.{js,ts,jsx,tsx}', './tailwind.components/**/*.{js,ts,jsx,tsx}'],
-  darkMode: false, // or 'media' or 'class'
-  theme: {
-    extend: {
-       colors:{
-         yyy: { // bg-yyy-yellow
-           'yellow': '#F39800',
-         },
-       }
-    }
-  },
-  variants: {
-    extend: {},
-  },
-  plugins: [],
+    purge: [
+        './src/pages/**/*.{js,ts,jsx,tsx}',
+        './src/tailwind.components/**/*.{js,ts,jsx,tsx}',
+        './src/layouts/**/*.{js,ts,jsx,tsx}',
+    ],
+    darkMode: "class", // or 'media' or 'class'
+    theme: {
+        extend: {
+            colors: {
+                yyy: { // bg-yyy-yellow
+                    'yellow': '#F39800',
+
+                    'd_container': '#0e0e10',
+                    'd_head': '#18181b',
+                    'd_nav': '#1f1f23'
+                },
+            }
+        }
+    },
+    variants: {
+        extend: {},
+    },
+    plugins: [],
 }

@@ -53,11 +53,12 @@ const Aside = () => {
                 sx={{width: '100%', maxWidth: 360, bgcolor: 'background.paper'}}
                 component='nav'
                 aria-labelledby='nested-list-subheader'
+                className={`dark:text-gray-400 dark:bg-yyy-d_container`}
             >
                 {
                     menus.map((menu) => (
                         <Link href={menu.href} key={menu.id}>
-                            <div className={`${styles['a-block']} rounded-lg ${router.pathname === menu.href ? 'bg-gray-200' : ''}`}>
+                            <div className={`${styles['a-block']} rounded-lg ${router.pathname === menu.href ? 'bg-gray-200 dark:text-gray-100 dark:bg-yyy-d_nav' : ''}`}>
                                 <ListItemButton>
                                     {menu.icon}
                                     <span className={`ml-4`}>{menu.text}</span>
@@ -71,7 +72,7 @@ const Aside = () => {
     }, [router.pathname]);
 
     return (
-        <div className={`${styles['aside-page']} border-r border-gray-200`}>
+        <div className={`${styles['aside-page']} border-r border-gray-200 dark:bg-yyy-d_container dark:border-gray-900`}>
             {MenuList}
         </div>
     )

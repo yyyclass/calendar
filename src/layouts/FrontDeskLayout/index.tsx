@@ -5,7 +5,7 @@ const FrontDeskLayout = ({children}:any)=>{
     return (
         <>
             <Head/>
-            <section id="app-aside">
+            <section id="app-aside" className={`dark:bg-yyy-d_container`}>
                 <Aside/>
                 {children}
             </section>

@@ -34,7 +34,7 @@ const RadioGroup = ({children, ...props}: RadioGroup) => {
             cloneElement(radio, {
                 ...props,
                 onClick: props.onClick,   // 点击事件
-                key: radio.props.key ? radio.props.key : key
+                key: radio.props.key ?? key
             }, radio.children)
         ));
 
